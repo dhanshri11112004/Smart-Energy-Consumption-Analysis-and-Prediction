@@ -7,8 +7,7 @@ import pickle
 import numpy as np
 import os
 import json
-import tempfile
-import pyttsx3
+
 import re
 import sqlite3
 from datetime import datetime
