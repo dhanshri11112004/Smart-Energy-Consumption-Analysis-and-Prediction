@@ -1,45 +1,82 @@
-// REGISTER
-function registerUser() {
+async function registerUser() {
+
     const name = document.getElementById("regName").value.trim();
     const email = document.getElementById("regEmail").value.trim().toLowerCase();
     const password = document.getElementById("regPassword").value.trim();
 
-    if (!name || !email || !password) {
-        alert("All fields are required");
-        return;
+    const response = await fetch("http://127.0.0.1:5000/register",{
+        method:"POST",
+        headers:{
+            "Content-Type":"application/json"
+        },
+        body:JSON.stringify({
+            name,
+            email,
+            password
+        })
+    });
+
+    const data = await response.json();
+
+    if(data.status=="success"){
+        alert("Registration Successful");
+        window.location.href="login.html";
+    }else{
+        alert(data.message);
     }
 
-    const user = { name, email, password };
-
-    localStorage.setItem("user", JSON.stringify(user));
-    localStorage.setItem("isLoggedIn", "false");
-
-    alert("Registration successful");
-    window.location.href = "login.html";
 }
 
 
-// LOGIN
-function loginUser() {
+async function loginUser() {
+    console.log("Login button clicked");
+
     const email = document.getElementById("loginEmail").value.trim().toLowerCase();
     const password = document.getElementById("loginPassword").value.trim();
 
-    const storedUser = JSON.parse(localStorage.getItem("user"));
-
-    if (!storedUser) {
-        alert("User not found. Please register.");
-        window.location.href = "register.html";
+    if (!email || !password) {
+        alert("Email and password are required");
         return;
     }
 
-    if (email === storedUser.email && password === storedUser.password) {
-        localStorage.setItem("isLoggedIn", "true");
-        window.location.href = "index.html";
-    } else {
-        alert("Invalid email or password");
+    try {
+        const response = await fetch("http://127.0.0.1:5000/login", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                email,
+                password
+            })
+        });
+
+        const data = await response.json();
+
+        console.log("Login response:", data);
+
+        if (data.status === "success") {
+
+            // Save JWT token
+            localStorage.setItem("token", data.token);
+
+            // Save user information returned by backend
+            localStorage.setItem("user", JSON.stringify(data.user));
+
+            console.log("User saved:", data.user);
+
+            alert("Login Successful");
+
+            window.location.href = "index.html";
+
+        } else {
+            alert(data.message || "Login failed");
+        }
+
+    } catch (error) {
+        console.error("Login error:", error);
+        alert("Unable to connect to server");
     }
 }
-
-
 
 

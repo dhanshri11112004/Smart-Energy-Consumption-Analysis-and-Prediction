@@ -1,6 +1,6 @@
 // Global State
 let hasModel = true;
-let predictionCount = 0;
+let predictionCount=0;
 let currentPage = 'dashboard';
 let lastPredictionValue = null;
 let audioEnabled = true;
@@ -9,14 +9,21 @@ let lastPredictionData = null;
 
 
 
-function updateDashboard() {
+async function updateDashboard() {
 
-    
     const modelStatus = document.getElementById('modelStatus');
     const predictionCountEl = document.getElementById('predictionCount');
 
+    const response = await fetch("http://127.0.0.1:5000/dashboard", {
+        headers: {
+            Authorization: "Bearer " + localStorage.getItem("token")
+        }
+    });
+
+    const data = await response.json();
+
     if (modelStatus) modelStatus.textContent = "Active";
-    if (predictionCountEl) predictionCountEl.textContent = predictionCount;
+    if (predictionCountEl) predictionCountEl.textContent = data.total_predictions;
 }
 // Initialize App
 document.addEventListener('DOMContentLoaded', function() {
@@ -27,13 +34,38 @@ document.addEventListener('DOMContentLoaded', function() {
     initFeedback();
     updateDashboard();
     renderFeatureImportance();
+    initPasswordChange();
+    initLogout();
     
 });
 
 const audioToggle = document.getElementById("audioToggle");
+
 if (audioToggle) {
+
+    // Load saved voice preference
+    const savedAudio = localStorage.getItem("audioEnabled");
+
+    if (savedAudio !== null) {
+        audioEnabled = savedAudio === "true";
+    }
+
+    audioToggle.checked = audioEnabled;
+
+    // Save preference when changed
     audioToggle.addEventListener("change", (e) => {
+
         audioEnabled = e.target.checked;
+
+        localStorage.setItem(
+            "audioEnabled",
+            audioEnabled
+        );
+
+        // Stop current speech when voice is disabled
+        if (!audioEnabled && "speechSynthesis" in window) {
+            window.speechSynthesis.cancel();
+        }
     });
 }
 
@@ -111,11 +143,16 @@ function initPredictionForm() {
         updateSystemStatus('predicting');
 
         try {
-            const response = await fetch("https://smart-energy-backend.onrender.com/predict", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            });
+            const token = localStorage.getItem("token");
+
+            const response = await fetch("http://127.0.0.1:5000/predict", {
+    method: "POST",
+    headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + token
+    },
+    body: JSON.stringify(payload)
+});
 
             const data = await response.json();
 
@@ -133,7 +170,7 @@ lastPredictionData = {
     prediction: data.prediction
 };
 
-predictionCount++;
+
 updateDashboard();
 updateSystemStatus('model_loaded');
 
@@ -194,16 +231,23 @@ function updateSystemStatus(status) {
 async function sendMessage(text) {
     if (!text.trim()) return;
 
-    const backendUrl = "https://smart-energy-backend.onrender.com";
+    const backendUrl = "http://127.0.0.1:5000";
     addMessage(text, "user");
     document.getElementById("chatInput").value = "";
 
     try {
+        const token = localStorage.getItem("token");
+
         const res = await fetch(`${backendUrl}/chat`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ message: text })
-        });
+    method: "POST",
+    headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + token
+    },
+    body: JSON.stringify({
+        message: text
+    })
+});
 
         if (!res.ok) throw new Error("Server responded with an error");
 
@@ -214,22 +258,20 @@ async function sendMessage(text) {
         let audioPath = data.audio_url || data.audio; // Handle both key names
 
         if (data.type === "prediction") {
-            displayMessage = `🔮 Predicted Energy: ${data.prediction} kWh\n\n${data.response}`;
-            if(audioEnabled){
-            speakText(data.response);
-            }   // 👈 only explanation
-        } else {
-            displayMessage = data.response;
-            if (audioEnabled) {
-            speakText(displayMessage);
+
+    displayMessage =
+        `🔮 Predicted Energy: ${data.prediction} kWh\n\n${data.response}`;
+
+} else {
+
+    displayMessage = data.response;
+
 }
 
-        }
+addMessage(displayMessage, "bot");
 
-
-        addMessage(displayMessage, "bot");
-        if (audioEnabled) {
-        speakText(displayMessage);
+if (audioEnabled) {
+    speakText(displayMessage);
 }
 
 
@@ -310,11 +352,16 @@ function initFeedback() {
             message: feedbackForm.querySelector("textarea").value
         };
 
-        const res = await fetch("https://smart-energy-backend.onrender.com/submit-feedback", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-        });
+        const token = localStorage.getItem("token");
+
+const res = await fetch("http://127.0.0.1:5000/submit-feedback", {
+    method: "POST",
+    headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + token
+    },
+    body: JSON.stringify(payload)
+});
 
         const data = await res.json();
 
@@ -365,21 +412,67 @@ if (themeToggle) {
     }
 }
 
-function loadSettings() {
-    const user = JSON.parse(localStorage.getItem("user"));
-    if (!user) return;
+async function loadSettings() {
 
-    // Profile top section
-    document.getElementById("profileName").textContent = user.name;
-    document.getElementById("profileEmail").textContent = user.email;
+    const token = localStorage.getItem("token");
 
-    // Form inputs
-    document.getElementById("setName").value = user.name;
-    document.getElementById("setEmail").value = user.email;
+    if (!token) {
+        console.log("No login token found");
+        return;
+    }
+
+    try {
+
+        const response = await fetch("http://127.0.0.1:5000/profile", {
+            method: "GET",
+            headers: {
+                "Authorization": "Bearer " + token
+            }
+        });
+
+        const data = await response.json();
+
+        if (data.status !== "success") {
+            console.error("Failed to load profile:", data.message);
+            return;
+        }
+
+        const user = data.user;
+
+        // Save latest user information
+        localStorage.setItem("user", JSON.stringify(user));
+
+        // Profile section
+        document.getElementById("profileName").textContent = user.name;
+        document.getElementById("profileEmail").textContent = user.email;
+
+        // Settings form
+        document.getElementById("setName").value = user.name;
+        document.getElementById("setEmail").value = user.email;
+
+        // Profile initial
+        const initial = user.name
+            ? user.name.charAt(0).toUpperCase()
+            : "U";
+
+        const profileInitial = document.getElementById("profileInitial");
+
+        if (profileInitial) {
+            profileInitial.textContent = initial;
+        }
+
+        console.log("Profile loaded:", user);
+
+    } catch (error) {
+
+        console.error("Profile loading error:", error);
+
+    }
 }
 
 
-function updateProfile() {
+async function updateProfile() {
+
     const name = document.getElementById("setName").value.trim();
     const email = document.getElementById("setEmail").value.trim().toLowerCase();
 
@@ -388,21 +481,294 @@ function updateProfile() {
         return;
     }
 
-    const user = JSON.parse(localStorage.getItem("user"));
-    if (!user) return;
+    const token = localStorage.getItem("token");
 
-    user.name = name;
-    user.email = email;
+    if (!token) {
+        alert("Please login again");
+        return;
+    }
 
-    localStorage.setItem("user", JSON.stringify(user));
+    try {
 
-    // Update UI immediately
-    document.getElementById("profileName").textContent = name;
-    document.getElementById("profileEmail").textContent = email;
+        const response = await fetch("http://127.0.0.1:5000/profile", {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + token
+            },
+            body: JSON.stringify({
+                name: name,
+                email: email
+            })
+        });
 
-    alert("Profile updated successfully");
+        const data = await response.json();
+
+        console.log("Profile update response:", data);
+
+        if (data.status === "success") {
+
+            // Backend gives a new token if email was changed
+            if (data.token) {
+                localStorage.setItem("token", data.token);
+            }
+
+            // Save updated user
+            localStorage.setItem(
+                "user",
+                JSON.stringify(data.user)
+            );
+
+            // Update UI
+            document.getElementById("profileName").textContent =
+                data.user.name;
+
+            document.getElementById("profileEmail").textContent =
+                data.user.email;
+
+            const profileInitial =
+                document.getElementById("profileInitial");
+
+            if (profileInitial) {
+                profileInitial.textContent =
+                    data.user.name.charAt(0).toUpperCase();
+            }
+
+            alert("Profile updated successfully");
+
+        } else {
+
+            alert(data.message || "Failed to update profile");
+
+        }
+
+    } catch (error) {
+
+        console.error("Profile update error:", error);
+        alert("Unable to connect to server");
+
+    }
 }
 
+
+function initPasswordChange() {
+
+    const changePasswordBtn =
+        document.getElementById("changePasswordBtn");
+
+    const passwordModal =
+        document.getElementById("passwordModal");
+
+    const closePasswordModal =
+        document.getElementById("closePasswordModal");
+
+    const cancelPasswordBtn =
+        document.getElementById("cancelPasswordBtn");
+
+    const changePasswordForm =
+        document.getElementById("changePasswordForm");
+
+    const passwordMessage =
+        document.getElementById("passwordMessage");
+
+
+    // Open modal
+    if (changePasswordBtn) {
+        changePasswordBtn.addEventListener("click", () => {
+
+            passwordModal.style.display = "flex";
+
+            passwordMessage.textContent = "";
+
+            changePasswordForm.reset();
+        });
+    }
+
+
+    // Close modal
+    if (closePasswordModal) {
+        closePasswordModal.addEventListener("click", () => {
+            passwordModal.style.display = "none";
+        });
+    }
+
+
+    // Cancel button
+    if (cancelPasswordBtn) {
+        cancelPasswordBtn.addEventListener("click", () => {
+            passwordModal.style.display = "none";
+        });
+    }
+
+
+    // Submit new password
+    if (changePasswordForm) {
+
+    changePasswordForm.addEventListener("submit", async (e) => {
+
+        e.preventDefault();
+
+        const currentPassword =
+            changePasswordForm.elements["currentPassword"].value.trim();
+
+        const newPassword =
+            changePasswordForm.elements["newPassword"].value.trim();
+
+        const confirmPassword =
+            changePasswordForm.elements["confirmPassword"].value.trim();
+
+
+        console.log("Current password entered:", currentPassword.length);
+        console.log("New password entered:", newPassword.length);
+        console.log("Confirm password entered:", confirmPassword.length);
+
+
+        // Check empty fields
+
+        if (!currentPassword || !newPassword || !confirmPassword) {
+
+            passwordMessage.textContent =
+                "Please fill all password fields.";
+
+            passwordMessage.style.color = "#ef4444";
+
+            return;
+        }
+
+
+        // Check new password length
+
+        if (newPassword.length < 6) {
+
+            passwordMessage.textContent =
+                "New password must be at least 6 characters.";
+
+            passwordMessage.style.color = "#ef4444";
+
+            return;
+        }
+
+
+        // Check password match
+
+        if (newPassword !== confirmPassword) {
+
+            passwordMessage.textContent =
+                "New passwords do not match.";
+
+            passwordMessage.style.color = "#ef4444";
+
+            return;
+        }
+
+
+        // Get JWT token
+
+        const token = localStorage.getItem("token");
+
+        if (!token) {
+
+            passwordMessage.textContent =
+                "Please login again.";
+
+            passwordMessage.style.color = "#ef4444";
+
+            return;
+        }
+
+
+        try {
+
+            console.log("Sending password change request...");
+
+            const response = await fetch(
+                "http://127.0.0.1:5000/change-password",
+                {
+                    method: "PUT",
+
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": "Bearer " + token
+                    },
+
+                    body: JSON.stringify({
+                        current_password: currentPassword,
+                        new_password: newPassword
+                    })
+                }
+            );
+
+
+            const data = await response.json();
+
+            console.log("Password change response:", data);
+
+
+            if (data.status === "success") {
+
+                passwordMessage.textContent =
+                    "Password changed successfully.";
+
+                passwordMessage.style.color = "#22c55e";
+
+                changePasswordForm.reset();
+
+                setTimeout(() => {
+
+                    passwordModal.style.display = "none";
+
+                }, 1200);
+
+            } else {
+
+                passwordMessage.textContent =
+                    data.message || "Failed to change password.";
+
+                passwordMessage.style.color = "#ef4444";
+            }
+
+
+        } catch (error) {
+
+            console.error("Password change error:", error);
+
+            passwordMessage.textContent =
+                "Unable to connect to server.";
+
+            passwordMessage.style.color = "#ef4444";
+        }
+
+    });
+}
+}
+
+function initLogout() {
+
+    const logoutBtn =
+        document.getElementById("settingsLogoutBtn");
+
+    if (!logoutBtn) return;
+
+    logoutBtn.addEventListener("click", () => {
+
+        const confirmLogout =
+            confirm("Are you sure you want to logout?");
+
+        if (!confirmLogout) return;
+
+        // Remove login information
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+
+        // Stop voice response if running
+        if ("speechSynthesis" in window) {
+            window.speechSynthesis.cancel();
+        }
+
+        // Redirect to login page
+        window.location.href = "login.html";
+    });
+}
 // const user = JSON.parse(localStorage.getItem("user"));
 // if (user) {
 //     document.getElementById("headerUserName").textContent = user.name;
@@ -564,10 +930,15 @@ async function offlinePredict() {
     status.textContent = "Uploading file and predicting...";
 
     try {
-        const res = await fetch("https://smart-energy-backend.onrender.com/offline-predict", {
-            method: "POST",
-            body: formData
-        });
+        const token = localStorage.getItem("token");
+
+const res = await fetch("http://127.0.0.1:5000/offline-predict", {
+    method: "POST",
+    headers: {
+        "Authorization": "Bearer " + token
+    },
+    body: formData
+});
 
         const data = await res.json();
 
@@ -609,6 +980,7 @@ function renderOfflineTable(predictions) {
 
         tbody.appendChild(tr);
     });
+    updateDashboard();
 
     tableCard.style.display = "block";
 }
@@ -705,45 +1077,37 @@ function speakText(text) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+    const pdfBtn = document.getElementById("downloadPDF");
 
-    let recognition;
-    const micBtn = document.getElementById("micBtn");
-    const voiceStatus = document.getElementById("voiceStatus");
+    if (!pdfBtn) return;
 
-    if (!micBtn) return;
+    pdfBtn.addEventListener("click", async () => {
 
-    if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
-        const SpeechRecognition =
-            window.SpeechRecognition || window.webkitSpeechRecognition;
+        const token = localStorage.getItem("token");
 
-        recognition = new SpeechRecognition();
-        recognition.lang = "en-US";
-        recognition.continuous = false;
-        recognition.interimResults = false;
+        const response = await fetch("http://127.0.0.1:5000/audit-pdf", {
+            headers: {
+                "Authorization": "Bearer " + token
+            }
+        });
 
-        recognition.onstart = () => {
-            micBtn.style.color = "#16a34a"; // green
-            if (voiceStatus) voiceStatus.textContent = "Listening...";
-        };
+        if (!response.ok) {
+            alert("Failed to download PDF");
+            return;
+        }
 
-        recognition.onend = () => {
-            micBtn.style.color = "";
-            if (voiceStatus) voiceStatus.textContent = "";
-        };
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
 
-        recognition.onresult = (event) => {
-            const transcript = event.results[0][0].transcript;
-            sendMessage(transcript);
-        };
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "audit_report.pdf";
+        a.click();
 
-        micBtn.addEventListener("click", () => recognition.start());
-
-    } else {
-        micBtn.disabled = true;
-    }
+        window.URL.revokeObjectURL(url);
+    });
 
 });
-
 const muteBtn = document.getElementById("muteBtn");
 const volumeOnIcon = document.getElementById("volumeOnIcon");
 const volumeOffIcon = document.getElementById("volumeOffIcon");
@@ -771,10 +1135,15 @@ document.getElementById("docUpload")?.addEventListener("change", async (e) => {
     formData.append("file", file);
 
     try {
-        const res = await fetch("https://smart-energy-backend.onrender.com/extract-inputs", {
-            method: "POST",
-            body: formData
-        });
+        const token = localStorage.getItem("token");
+
+const res = await fetch("http://127.0.0.1:5000/extract-inputs", {
+    method: "POST",
+    headers: {
+        "Authorization": "Bearer " + token
+    },
+    body: formData
+});
 
         const data = await res.json();
 
@@ -800,7 +1169,13 @@ document.getElementById("docUpload")?.addEventListener("change", async (e) => {
 
 document.getElementById("generateAudit").addEventListener("click", async () => {
     try {
-        const res = await fetch("https://smart-energy-backend.onrender.com/audit");
+        const token = localStorage.getItem("token");
+
+const res = await fetch("http://127.0.0.1:5000/audit", {
+    headers: {
+        "Authorization": "Bearer " + token
+    }
+});
         const data = await res.json();
 
         if (data.status !== "success") {
@@ -867,19 +1242,32 @@ function renderAudit(audit) {
 
 }
 
+function loadFeedbackUser() {
 
-document.addEventListener("DOMContentLoaded", () => {
-    const pdfBtn = document.getElementById("downloadPDF");
+    const userData = localStorage.getItem("user");
 
-    if (!pdfBtn) return;
+    if (!userData) {
+        console.log("No logged-in user found.");
+        return;
+    }
 
-    pdfBtn.addEventListener("click", () => {
-        window.open(
-            "https://smart-energy-backend.onrender.com/audit-pdf",
-            "_blank"
-        );
-    });
-});
+    const user = JSON.parse(userData);
+
+    const nameInput = document.getElementById("feedbackName");
+    const emailInput = document.getElementById("feedbackEmail");
+
+    if (nameInput) {
+        nameInput.value = user.name || "";
+    }
+
+    if (emailInput) {
+        emailInput.value = user.email || "";
+    }
+}
+
+loadFeedbackUser();
+
+
 
 
 
