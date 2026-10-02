@@ -506,12 +506,7 @@ try:
 except Exception as e:
     print(f"❌ ML Model Load Error: {e}")
 
-# ---------------- GEMINI CONFIG ----------------
-# CRITICAL: Replace 'YOUR_API_KEY_HERE' with your actual key if the environment variable isn't working
-# API_KEY = os.getenv("GEMINI_API_KEY") 
 
-# print(f"DEBUG: API Key found: {bool(os.getenv('GEMINI_API_KEY'))}")
-# MODEL_NAME = "gemini-2.0-flash-lite-preview-02-05" 
 
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 model=genai.GenerativeModel("gemini-2.0-flash-lite-preview-02-05")
@@ -535,6 +530,23 @@ def ask_ai(prompt):
         print("Switching to Groq...")
 
         return ask_groq(prompt)
+
+def init_users_db():
+    conn = sqlite3.connect("users.db")
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT,
+            email TEXT UNIQUE,
+            password TEXT
+        )
+    """)
+
+    conn.commit()
+    conn.close()
+
 
 def init_feedback_db():
     conn = sqlite3.connect("feedback.db")
@@ -1485,17 +1497,8 @@ def dashboard():
     })
 
 
-
-
-
-
-
-
-
-# if __name__ == "__main__":
-#     init_feedback_db()
-#     app.run(debug=True, use_reloader=False, port=5000)
+init_users_db()
+init_feedback_db()
 
 if __name__ == "__main__":
-    init_feedback_db()
-    app.run(host="0.0.0.0",port=5000,debug=True,use_reloader=False)
+    app.run(host="0.0.0.0", port=5000, debug=True, use_reloader=False)
