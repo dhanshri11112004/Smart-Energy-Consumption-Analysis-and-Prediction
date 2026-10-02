@@ -1,4 +1,3 @@
-
 Flask==3.0.0
 flask-cors==4.0.0
 numpy==1.26.2
@@ -12,5 +11,6 @@ google-generativeai
 flask-jwt-extended
 gunicorn
 groq
-
-
+pyttsx3
+PyPDF2
+python-docx

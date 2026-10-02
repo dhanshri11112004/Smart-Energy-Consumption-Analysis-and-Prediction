@@ -1,7 +1,6 @@
 from flask import Flask, request, jsonify, send_file, render_template
 from flask_cors import CORS
 import google.generativeai as genai
-from google.genai import Client
 from ai.groq_api import ask_groq
 import pickle
 import numpy as np
@@ -510,14 +509,13 @@ except Exception as e:
 # ---------------- GEMINI CONFIG ----------------
 # CRITICAL: Replace 'YOUR_API_KEY_HERE' with your actual key if the environment variable isn't working
 # API_KEY = os.getenv("GEMINI_API_KEY") 
-# client = Client(api_key=API_KEY)
+
 # print(f"DEBUG: API Key found: {bool(os.getenv('GEMINI_API_KEY'))}")
 # MODEL_NAME = "gemini-2.0-flash-lite-preview-02-05" 
 
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 model=genai.GenerativeModel("gemini-2.0-flash-lite-preview-02-05")
-response=model.generate_content(prompt)
-text=response.text
+
 # ---------------- FEATURE ORDER ----------------
 FEATURE_ORDER = ["HVACUsage", "Occupancy", "Temperature", "RenewableEnergy", "Hour", "IsWeekend"]
 
@@ -528,10 +526,7 @@ def ask_ai(prompt):
     try:
         print("Using Gemini...")
 
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt
-        )
+        response = model.generate_content(prompt)
 
         return response.text
 
