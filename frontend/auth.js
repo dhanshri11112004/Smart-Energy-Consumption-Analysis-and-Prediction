@@ -4,7 +4,7 @@ async function registerUser() {
     const email = document.getElementById("regEmail").value.trim().toLowerCase();
     const password = document.getElementById("regPassword").value.trim();
 
-    const response = await fetch("http://127.0.0.1:5000/register",{
+    const response = await fetch("/register",{
         method:"POST",
         headers:{
             "Content-Type":"application/json"
@@ -40,7 +40,7 @@ async function loginUser() {
     }
 
     try {
-        const response = await fetch("http://127.0.0.1:5000/login", {
+        const response = await fetch("/login", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"

@@ -14,7 +14,7 @@ async function updateDashboard() {
     const modelStatus = document.getElementById('modelStatus');
     const predictionCountEl = document.getElementById('predictionCount');
 
-    const response = await fetch("http://127.0.0.1:5000/dashboard", {
+    const response = await fetch("/dashboard", {
         headers: {
             Authorization: "Bearer " + localStorage.getItem("token")
         }
@@ -145,7 +145,7 @@ function initPredictionForm() {
         try {
             const token = localStorage.getItem("token");
 
-            const response = await fetch("http://127.0.0.1:5000/predict", {
+            const response = await fetch("/predict", {
     method: "POST",
     headers: {
         "Content-Type": "application/json",
@@ -231,7 +231,7 @@ function updateSystemStatus(status) {
 async function sendMessage(text) {
     if (!text.trim()) return;
 
-    const backendUrl = "http://127.0.0.1:5000";
+    const backendUrl = "";
     addMessage(text, "user");
     document.getElementById("chatInput").value = "";
 
@@ -354,7 +354,7 @@ function initFeedback() {
 
         const token = localStorage.getItem("token");
 
-const res = await fetch("http://127.0.0.1:5000/submit-feedback", {
+const res = await fetch("/submit-feedback", {
     method: "POST",
     headers: {
         "Content-Type": "application/json",
@@ -423,7 +423,7 @@ async function loadSettings() {
 
     try {
 
-        const response = await fetch("http://127.0.0.1:5000/profile", {
+        const response = await fetch("/profile", {
             method: "GET",
             headers: {
                 "Authorization": "Bearer " + token
@@ -490,7 +490,7 @@ async function updateProfile() {
 
     try {
 
-        const response = await fetch("http://127.0.0.1:5000/profile", {
+        const response = await fetch("/profile", {
             method: "PUT",
             headers: {
                 "Content-Type": "application/json",
@@ -682,7 +682,7 @@ function initPasswordChange() {
             console.log("Sending password change request...");
 
             const response = await fetch(
-                "http://127.0.0.1:5000/change-password",
+                "/change-password",
                 {
                     method: "PUT",
 
@@ -932,7 +932,7 @@ async function offlinePredict() {
     try {
         const token = localStorage.getItem("token");
 
-const res = await fetch("http://127.0.0.1:5000/offline-predict", {
+const res = await fetch("/offline-predict", {
     method: "POST",
     headers: {
         "Authorization": "Bearer " + token
@@ -1085,7 +1085,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const token = localStorage.getItem("token");
 
-        const response = await fetch("http://127.0.0.1:5000/audit-pdf", {
+        const response = await fetch("/audit-pdf", {
             headers: {
                 "Authorization": "Bearer " + token
             }
@@ -1137,7 +1137,7 @@ document.getElementById("docUpload")?.addEventListener("change", async (e) => {
     try {
         const token = localStorage.getItem("token");
 
-const res = await fetch("http://127.0.0.1:5000/extract-inputs", {
+const res = await fetch("/extract-inputs", {
     method: "POST",
     headers: {
         "Authorization": "Bearer " + token
@@ -1171,7 +1171,7 @@ document.getElementById("generateAudit").addEventListener("click", async () => {
     try {
         const token = localStorage.getItem("token");
 
-const res = await fetch("http://127.0.0.1:5000/audit", {
+const res = await fetch("/audit", {
     headers: {
         "Authorization": "Bearer " + token
     }
