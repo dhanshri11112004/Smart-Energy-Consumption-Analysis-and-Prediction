@@ -76,7 +76,7 @@ function initNavigation() {
 
     // 🔹 FORCE initial state (only home visible)
     pages.forEach(page => page.classList.remove('active'));
-    document.getElementById("home")?.classList.add("active");
+    document.getElementById("dashboard")?.classList.add("active");
 
     navItems.forEach(item => {
         item.addEventListener('click', (e) => {
