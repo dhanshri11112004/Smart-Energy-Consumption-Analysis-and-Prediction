@@ -836,6 +836,8 @@ function renderAuditFeatureChart(inputs) {
         inputs.RenewableEnergy / 100
     ];
 
+    Chart.getChart(ctx)?.destroy();
+
     new Chart(ctx, {
         type: "bar",
         data: {
@@ -863,7 +865,6 @@ function renderAuditFeatureChart(inputs) {
         }
     });
 }
-
 
 function updateEnergyInsight(prediction) {
     const hvac = document.getElementById("hvacToggle")?.checked;
