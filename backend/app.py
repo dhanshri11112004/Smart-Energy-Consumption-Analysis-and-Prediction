@@ -1348,7 +1348,7 @@ SUBMISSION DETAILS
 Submitted At: {timestamp}
 """)
 
-    with smtplib.SMTP("smtp.gmail.com", 587) as server:
+    with smtplib.SMTP("smtp.gmail.com", 587, timeout=10) as server:
 
         server.starttls()
 
@@ -1384,7 +1384,7 @@ Regards,
 Smart Energy Team
 """)
 
-    with smtplib.SMTP("smtp.gmail.com", 587) as server:
+    with smtplib.SMTP("smtp.gmail.com", 587, timeout=10) as server:
 
         server.starttls()
 
